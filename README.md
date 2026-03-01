@@ -22,6 +22,8 @@ docker run --name mi-servidor-nginx `
   -v "${PWD}/dist:/usr/share/nginx/html" `
   -v "${PWD}/Servidor/Configuracion_web/default.conf:/etc/nginx/conf.d/default.conf" `
   -p 8080:80 -d nginx
+
+  
 Gestión del contenedor
 En caso de que necesites detener y eliminar el contenedor por completo para reiniciar el proceso:
 
