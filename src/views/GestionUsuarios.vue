@@ -1,9 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { usuariosServicios } from '../services/usuarios';
-
+//Array de usuarios que guardará los valores del listar 
 const usuarios = ref([]);
+//ZUsuario
+const Z_ID = 'Victor';
+//Devuelve fecha y hor actuales
 
+const obtenerFechaActual = () => {
+  const ahora = new Date();
+  return ahora.toISOString(); 
+};
+
+//Declaramos los dos formularios (Insert y Update) en usuarios, esto solo será visto por administradores
 const form = ref({ 
   login: '', 
   password_hash: '', 
@@ -25,13 +34,20 @@ const formUpdate = ref({
 const cargar = async () => { 
   usuarios.value = await usuariosServicios.listar(); 
 };
-
+//Recogemos los datos del usuario y hacemos la inserción en la tabla
 const guardar = async () => {
-    const res = await usuariosServicios.crear(form.value);
+    form.value.ultimo_acceso= obtenerFechaActual();
+    const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID //Pasamos el zusuario siempre
+    };
+    //Hacemos la llamada a la API con los datos a insertar
+    const res = await usuariosServicios.crear(datosAEnviar);
     if (res.ok) {
         alert("Alta correcta");
         // Limpiamos el formulario para el siguiente registro
         form.value = {login: '',password_hash: '', rol_id: '', ref_identidad_fk: '', estado_id:'', ultimo_acceso:''};
+        
         cargar();
     } else {
         alert("Error: DNI o ID duplicado");
@@ -39,19 +55,27 @@ const guardar = async () => {
 };
 
 const actualizar = async () => {
-  const res = await usuariosServicios.actualizar(formUpdate.value.login, formUpdate.value);
+  formUpdate.value.ultimo_acceso= obtenerFechaActual();
+  const datosAEnviar = {
+    ...formUpdate.value,
+    zusuario: Z_ID
+  };
+  //Hacemos la llamada a la API con la primary key y los datos con la actualización introducida tambien
+  const res = await usuariosServicios.actualizar(formUpdate.value.login, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
-    formUpdate.value = {login: '',password_hash: '', rol_id: '', ref_identidad_fk: '', estado_id:'', ultimo_acceso:''};;
+    formUpdate.value = {login: '', password_hash: '', rol_id: '', ref_identidad_fk: '', estado_id:'', ultimo_acceso:''};
     await cargar();
-  }else{
-    alert("No se puede actualizar el registro");
+  } else {
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 
-const borrar = async (id) => {
+const borrar = async (login) => {
     if (confirm("¿Desea eliminar este usuario?")) {
-        await usuariosServicios.eliminar(id);
+        await usuariosServicios.eliminar(login);
         cargar();
     }
 };
@@ -70,7 +94,6 @@ onMounted(cargar);
             <input v-model="form.rol_id" placeholder="Rol" required><br><br>
             <input v-model="form.ref_identidad_fk" placeholder="Referencia de identidad" required><br><br>
             <input v-model="form.estado_id" placeholder="Estado ID" required><br><br>
-            <input v-model="form.ultimo_acceso" placeholder="Ultimo acceso" required><br><br>
             <button type="submit">Dar de Alta</button>
         </form>
     </div>
@@ -109,7 +132,6 @@ onMounted(cargar);
             <input v-model="formUpdate.rol_id" placeholder="Rol" required><br><br>
             <input v-model="formUpdate.ref_identidad_fk" placeholder="Referencia de identidad" required><br><br>
             <input v-model="formUpdate.estado_id" placeholder="Estado ID" required><br><br>
-            <input v-model="formUpdate.ultimo_acceso" placeholder="Ultimo acceso" required><br><br>
             <button type="submit">Actualizar</button>
         </form>
     </div>

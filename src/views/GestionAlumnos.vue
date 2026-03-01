@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { alumnoService } from '../services/alumno';
+import { usuariosServicios } from '@/services/usuarios';
 
 const alumnos = ref([]);
 // Sincronizamos los nombres con lo que muestra la tabla
+const Z_ID = 'Victor';
 const form = ref({ 
   nia: '', 
   nombre: '', 
@@ -13,6 +15,10 @@ const form = ref({
   tutor_legal_contacto:'',
   estado_id: null
 });
+
+const buscador= ref({
+    text:''
+})
 
 const formUpdate = ref({ 
   nia: '', 
@@ -28,20 +34,69 @@ const cargar = async () => {
   alumnos.value = await alumnoService.listar(); 
 };
 
+const cargarEspacios = async () => {
+    try {
+        const datos = await espaciosService.listar();
+        espaciosOriginales.value = datos;
+
+        espaciosMostrados.value = []; 
+
+        for (const espacio of espaciosOriginales.value) {
+            if (espacio.estado_operativo === 'OP') {
+                espaciosMostrados.value.push(espacio);
+            }
+        }
+    } catch (error) {
+        console.error("Error al cargar espacios:", error);
+    }
+}
+
+// CORRECCIÓN PARA GUARDAR (Ajustado a tu imagen de la API)
 const guardar = async () => {
-    const res = await alumnoService.crear(form.value);
-    if (res.ok) {
-        alert("Alta correcta");
-        // Limpiamos el formulario para el siguiente registro
-        form.value = {nia: '',nombre: '', apellidos: '',curso_id:'', correo_electronico: '',tutor_legal_contacto:'', estado_id:''};
-        cargar();
-    } else {
-        alert("Error: DNI o correo duplicado");
+    // La API espera formato ISO String según tu imagen
+    const ahora = new Date().toISOString();
+    const datosAEnviar = {
+        ...form.value,
+        zusuario: Z_ID
+    };
+    const datosUsuario = {
+        login: `${form.value.nombre} ${form.value.apellidos}`,
+        password_hash: String(form.value.nia),
+        rol_id: 'Alum',
+        ref_identidad_fk: String(form.value.nia),
+        estado_id: 'act',
+        ultimo_acceso: ahora,
+        zfecha: ahora,
+        zusuario: Z_ID
+    };
+
+    try {
+        const res = await alumnoService.crear(datosAEnviar);       
+        if (res.ok) {
+            const respuestaUsuario = await usuariosServicios.crear(datosUsuario); 
+            if (respuestaUsuario.ok) {
+                alert("Alumno y Usuario creados.");
+                form.value = { nia: '', nombre: '', apellidos: '', curso_id: null, correo_electronico: '', tutor_legal_contacto: '', estado_id: null };
+                await cargar();
+            } else {
+                alert("Alumno creado, pero el usuario no");
+            }
+        } else {
+            alert("Error: El DNI o Correo ya existen. No se ha creado ninguno++");
+        }
+    } catch (error) {
+        console.error("Error crítico en guardar:", error);
+        alert("No se pudo completar la operación. Revisa la consola.");
     }
 };
 
+
 const actualizar = async () => {
-  const res = await alumnoService.actualizar(formUpdate.value.nia, formUpdate.value);
+  const datosAEnviar = {
+      ...formUpdate.value,
+      zusuario: Z_ID
+    };
+  const res = await alumnoService.actualizar(formUpdate.value.nia, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {nia: '',nombre: '', apellidos: '',curso_id:'', correo_electronico: '',tutor_legal_contacto:'', estado_id:''};
@@ -58,14 +113,43 @@ const borrar = async (nia) => {
     }
 };
 
+//En caso de encontrar coincidencias mostrariamos solo las coincidencias halladas con la función filter
+//que tiene un uso muy parecido a un where en base de datos
+const buscarAlumnos = async() =>{
+  const alumnosBucados = await alumnoService.listar();
+  if(!buscador.value.text){
+    alumnos.value = alumnosBucados;
+  }
+
+  const comparador = buscador.value.text;
+
+  alumnos.value = alumnosBucados.filter(
+    a=> a.nia === comparador || a.curso_id === comparador || a.apellidos === comparador
+  )
+}
+
+//Se muestran todos los registros de nuevo
+const mostrarTodos = async () => {
+  buscador.value.text = ''; 
+  await cargar(); 
+};
+
 onMounted(cargar);
 </script>
 
 <template>
+  <div>
+    <h3>Buscar alumnos por DNI/NIE, Nombre o apellidos</h3>
+    <form @submit.prevent="buscarAlumnos" class="buscador">
+        <input v-model="buscador.text" placeholder="Introduce el texto por el que quieras buscar al alumno" class="inputBuscador"><br>
+        <button type="submit" id="btn-search">Buscar</button>
+        <button type="button" @click="mostrarTodos" id="btn-limpiar">Mostrar Todos</button>
+    </form>
+  </div>
   <div class="modulo">
     <h2>Gestión de alumnos</h2> 
     <div class="contenido">
-        <h3>Dar de alta un profesor</h3>
+        <h3>Dar de alta un alumno</h3>
         <form @submit.prevent="guardar">
             <input v-model="form.nia" placeholder="DNI/NIE" required><br><br>
             <input v-model="form.nombre" placeholder="Nombre" required><br><br>
@@ -107,7 +191,7 @@ onMounted(cargar);
         </table>
     </div>
     <div class="contenido">
-        <h3>Modificar un profesor</h3>
+        <h3>Modificar un alumno</h3>
         <form @submit.prevent="actualizar">
             <input v-model="formUpdate.nia" placeholder="DNI/NIE" required><br><br>
             <input v-model="formUpdate.nombre" placeholder="Nombre" required><br><br>
@@ -171,6 +255,25 @@ form input {
   font-size: 0.85rem;
 }
 
+.inputBuscador{
+  width: 400px;
+  padding: 5px 3px;
+}
+#btn-search{
+  width: 100px;
+  padding: 5px 10px;
+}
+
+#btn-limpiar{
+  width: 100px;
+  padding: 6px 3px;
+  background-color: #42b983;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  margin-left: 10px;
+}
 button[type="submit"] {
   width: 100%;
   background-color: #42b983;

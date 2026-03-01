@@ -1,7 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, inject} from 'vue';
 import { profesorService } from '../services/profesores';
+import { usuariosServicios } from '@/services/usuarios';
+import { reservasService } from '@/services/reservas';
 
+const user = inject('nombreUser');
+const Z_ID = 'Victor';
 const profesores = ref([]);
 // Sincronizamos los nombres con lo que muestra la tabla
 const form = ref({ 
@@ -24,24 +28,60 @@ const formUpdate = ref({
   password_hash: ''
 });
 
+//MÉTODOS CRUD
 const cargar = async () => { 
   profesores.value = await profesorService.listar(); 
 };
 
 const guardar = async () => {
-    const res = await profesorService.crear(form.value);
-    if (res.ok) {
-        alert("Alta correcta");
-        // Limpiamos el formulario para el siguiente registro
-        form.value = {dni_nie: '',nombre: '', apellidos: '', correo_institucional: '',departamento_id:'', rol_id:'', password_hash:''};
-        cargar();
-    } else {
-        alert("Error: DNI o correo duplicado");
+  const ahora = new Date().toISOString();
+   const datosAEnviar = {
+    ...form.value,
+    rol_id: 'Prof',
+    password_hash: form.value.dni_nie,
+    zfecha: ahora,
+    zusuario: Z_ID
+  };
+  //Asignación de datos
+  const datosUsuario = {
+        login: `${form.value.nombre} ${form.value.apellidos}`,
+        password_hash: String(form.value.dni_nie),
+        rol_id: 'Prof',
+        ref_identidad_fk: String(form.value.dni_nie),
+        estado_id: 'act',
+        ultimo_acceso: ahora,
+        zfecha: ahora,
+        zusuario: Z_ID
+    };
+    try {
+        //Insertamos el profesor
+        const res = await profesorService.crear(datosAEnviar);       
+        if (res.ok) {
+            //Si no  ha dado error al insertar el profesor insertar el usuario
+            const respuestaUsuario = await usuariosServicios.crear(datosUsuario); 
+            if (respuestaUsuario.ok) {
+                //Aqui solo llegariamos en caso de haber insertado con exito ambos
+                alert("Profesor y Usuario creados.");
+                form.value = { dni_nie: '', nombre: '', apellidos: '', correo_institucional: '', departamento_id: ''};
+                await cargar();
+            } else {
+                alert("Profesor creado, pero el usuario no");
+            }
+        } else {
+            alert("Error: El DNI o Correo ya existen. No se ha creado ninguno");
+        }
+    } catch (error) {
+        console.error("Error crítico en guardar:", error);
+        alert("No se pudo completar la operación. Revisa la consola.");
     }
 };
 
 const actualizar = async () => {
-  const res = await profesorService.actualizar(formUpdate.value.dni_nie, formUpdate.value);
+   const datosAEnviar = {
+    ...formUpdate.value,
+    zusuario: Z_ID
+  };
+  const res = await profesorService.actualizar(formUpdate.value.dni_nie, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {dni_nie: '',nombre: '', apellidos: '',correo_institucional:'', departamento_id: '',rol_id:'', password_hash:''};
@@ -52,9 +92,43 @@ const actualizar = async () => {
 }
 
 const borrar = async (dni_nie) => {
-    if (confirm("¿Desea cancelar las reservas activas de este profesor?")) {
-        await profesorService.eliminar(dni_nie);
-        cargar();
+    if (confirm(`¿Desea eliminar al profesor y todas sus reservas asociadas?`)) {
+        try {
+            
+            const listaUsuarios = await usuariosServicios.listar();
+            const usuarioEncontrado = listaUsuarios.find(u => 
+                u.ref_identidad_fk.trim() === dni_nie.trim()
+            );
+
+            if (usuarioEncontrado) {
+                const loginDelProfesor = usuarioEncontrado.login;
+                const listaReservas = await reservasService.listar();
+                
+                const reservasParaBorrar = listaReservas.filter(r => 
+                    r.usuario_login === loginDelProfesor
+                );
+
+                // Borramos reservas
+                for (const reserva of reservasParaBorrar) {
+                    await reservasService.eliminar(reserva.id);
+                }
+                // Borramos al profesor de su tabla
+                await profesorService.eliminar(dni_nie);
+
+                // Borramos al usuario de la tabla de identidades 
+                await usuariosServicios.eliminar(loginDelProfesor);
+
+                alert("Eliminación completa: Reservas, Profesor y Usuario.");
+            } else {gemk
+                alert("Profesor eliminado (no se encontraron reservas ni usuario vinculado).");
+            }
+
+            await cargar();
+
+        } catch (error) {
+            console.error("Error en el proceso de borrado:", error);
+            alert("Error al tratar de eliminar los datos.");
+        }
     }
 };
 
@@ -72,8 +146,6 @@ onMounted(cargar);
             <input v-model="form.apellidos" placeholder="Apellidos" required><br><br>
             <input v-model="form.correo_institucional" placeholder="Correo Institucional" required><br><br>
             <input v-model.number="form.departamento_id" placeholder="ID Departamento" required><br><br>
-            <input v-model.number="form.rol_id" placeholder="Rol" required><br><br>
-            <input v-model="form.password_hash" placeholder="Password" required><br><br>
             <button type="submit">Dar de Alta</button>
         </form>
     </div>
@@ -114,8 +186,6 @@ onMounted(cargar);
             <input v-model="formUpdate.apellidos" placeholder="Apellidos" required><br><br>
             <input v-model="formUpdate.correo_institucional" placeholder="Correo Institucional" required><br><br>
             <input v-model.number="formUpdate.departamento_id" placeholder="ID Departamento" required><br><br>
-            <input v-model.number="formUpdate.rol_id" placeholder="Rol" required><br><br>
-            <input v-model="formUpdate.password_hash" placeholder="Password" required><br><br>
             <button type="submit">Actualizar</button>
         </form>
     </div>

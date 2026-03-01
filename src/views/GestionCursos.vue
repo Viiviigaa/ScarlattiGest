@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue';
 import { cursosService } from '../services/cursos';
 
+const Z_ID = 'Victor';
+
 const cursos = ref([]);
 // Sincronizamos los nombres con lo que muestra la tabla
 const form = ref({ 
@@ -29,33 +31,49 @@ const formUpdate = ref({
 const cargar = async () => { 
   cursos.value = await cursosService.listar(); 
 };
-//No se porque no me funciona no me deja insertar yo creo por algún poblema con la ID
+
+
 const guardar = async () => {
-    const maxId = cursos.value.length > 0 
-        ? Math.max(...cursos.value.map(c => c.id)) 
-        : 0;
-    const nuevoId = maxId + 1;
+    const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID
+    };    
+    const respuesta = await fetch('http://44.207.19.239:3000/cursos?zusuario=Victor')
+    const tutorCursos = await respuesta.json();
+
+    const ocupado = tutorCursos.find(tutor => {
+        return form.value.tutor_id === tutor.tutor_id
+    });
+
+    const respuestaEspacios = await fetch('http://44.207.19.239:3000/espacios?zusuario=Victor')
+    const aulaCursos = await respuestaEspacios.json();
+
+    const aulaOP = aulaCursos.find(aula => {
+      return aula.id === form.value.aula_id;
+    });
     
-    const datosParaEnviar = {
-        ...form.value,
-        id: nuevoId
-    };
-    
-    const { id, ...datosForm } = datosParaEnviar;
-    const datosConId = { id: nuevoId, ...datosForm };
-    
-    const res = await cursosService.crear(datosConId);
-    if (res.ok) {
+    if(!ocupado && aulaOP.estado_operativo === 'OP'){
+      const res = await cursosService.crear(datosAEnviar);
+      if (res.ok) {
         alert("Alta correcta");
         form.value = {id: '', nombre_curso: '', etapa_id: '', grupo: '', turno_id:'', anio_academico:'', tutor_id:'', aula_id:''};
         cargar();
-    } else {
-        alert("Ha ocurrido un error al insertar");
+      } else {
+        const errorData = await res.json();
+        console.error("FALLO CRÍTICO DE LA API:", errorData);
+        alert("Error: " + (errorData.error || "Revisa la consola F12"));
+      }
+    }else{
+      alert("Este profesor ya ha sido asignado a un curso como tutor o el aula no está operativa en este momento");
     }
 };
 
 const actualizar = async () => {
-  const res = await  cursosService.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+      ...formUpdate.value,
+      zusuario: Z_ID
+    };
+  const res = await  cursosService.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre_curso: '', etapa_id: '',grupo:'', turno_id: '',anio_academico:'', tutor_id:'', aula_id:''};
@@ -65,22 +83,79 @@ const actualizar = async () => {
   }
 }
 
+const alumnos = ref([]);
 const borrar = async (id) => {
-    if (confirm("¿Desea cancelar las reservas activas de este profesor?")) {
-        await cursosService.eliminar(id);
+    if (confirm("¿Deseas eliminar el curso?")) {
+        //Comprobamos si hay alumnos asignados al curso antes de borrar y si 
+        //existen alumnos vinculados al curso no borramos el curso e informamos mediante un alert
+        const res = await fetch('http://44.207.19.239:3000/alumnos?zusuario=Victor') 
+        const existenAlumnos =  await res.json();
+        alumnos.value = existenAlumnos.filter(a => a.curso_id === id);
+        if(alumnos.value.length === 0){
+          await cursosService.eliminar(id);
+        }else{
+          alert("No se puede borrar el curso porque existen alumnos asignados al mismo");
+        }
         cargar();
     }
 };
+
+const alumnosFiltrados= ref([]);
+
+const verAlumnosCurso = async(id) =>{
+  const res = await fetch('http://44.207.19.239:3000/alumnos?zusuario=Victor');
+  const alumnosPorCurso = await res.json();
+  //Utilizamos filter porque .find solo devuelve el primer elemento y filter nos devuelve la lista completa
+  alumnosFiltrados.value = alumnosPorCurso.filter(
+    curso => curso.curso_id === id
+  )
+
+  if(alumnosFiltrados.value.length === 0){
+    alert("No hay alumnos en el curso seleccionado");
+  }
+
+}
 
 onMounted(cargar);
 </script>
 
 <template>
+  <div v-if="alumnosFiltrados.length > 0">
+    <h3>Alumnos del curso seleccionado</h3>
+    <table>
+        <thead>
+          <tr>
+            <th>DNI/NIA</th>
+            <th>Nombre</th>
+            <th>Apellidos</th>
+            <th>Curso ID</th>
+            <th>Correo electronico</th>
+            <th>Tutor legal Contacto</th>
+            <th>Estado ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="a in alumnosFiltrados" :key="a.nia">
+            <td>{{ a.nia }}</td>
+            <td>{{ a.nombre }}</td>
+            <td>{{ a.apellidos }}</td>
+            <td>{{ a.curso_id }}</td>
+            <td>{{ a.correo_electronico }}</td>
+            <td>{{ a.tutor_legal_contacto }}</td>
+            <td>{{ a.estado_id }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <br>
+    <button class="btn-primary" @click="alumnosFiltrados = []">Cerrar lista</button>
+  </div>
+  <br>
   <div class="modulo">
     <h2>Gestión de cursos (H3)</h2> 
     <div class="contenido">
         <h3>Dar de alta un curso</h3>
         <form @submit.prevent="guardar">
+            <input v-model="form.id" placeholder="ID" required><br><br>
             <input v-model="form.nombre_curso" placeholder="Nombre cursos" required><br><br>
             <input v-model.number="form.etapa_id" placeholder="Etapa" required><br><br>
             <input v-model="form.grupo" placeholder="Grupo" required><br><br>
@@ -115,6 +190,9 @@ onMounted(cargar);
                     <td>{{ c.anio_academico }}</td>
                     <td>{{ c.tutor_id }}</td>
                     <td>{{ c.aula_id }}</td>
+                    <td>
+                        <button @click="verAlumnosCurso(c.id)" class="btn-primary">Ver alumnos del curso</button>
+                    </td>
                     <td>
                         <button @click="borrar(c.id)" class="btn-borrar">Eliminar</button>
                     </td>
@@ -217,7 +295,14 @@ th {
   font-size: 0.7rem;
 }
 
-
+.btn-primary{
+  background-color: rgb(110, 110, 255);
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  color:white;
+  width: 150px;
+}
 .btn-borrar {
   background-color: #ffeded;
   color: #f56c6c;

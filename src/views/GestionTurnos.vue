@@ -3,7 +3,9 @@ import { ref, onMounted } from 'vue';
 import { turnosServicios } from '@/services/turnos';
 
 const turnos = ref([]);
+const Z_ID = 'Victor';
 
+//Formularios para el insert y para el update
 const form = ref({ 
   id: '', 
   nombre: '', 
@@ -16,30 +18,43 @@ const formUpdate = ref({
   horario_referencia:'',
 });
 
+//MÉTODOS CRUD
 const cargar = async () => { 
   turnos.value = await turnosServicios.listar(); 
 };
 
 const guardar = async () => {
-    const res = await turnosServicios.crear(form.value);
+    const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID
+    };
+    const res = await turnosServicios.crear(datosAEnviar);
     if (res.ok) {
         alert("Alta correcta");
         // Limpiamos el formulario para el siguiente registro
         form.value = {id: '',nombre: '', horario_referencia: ''};
         cargar();
     } else {
-        alert("Error: DNI o ID duplicado");
+        const errorData = await res.json();
+        console.error("FALLO CRÍTICO DE LA API:", errorData);
+        alert("Error: " + (errorData.error || "Revisa la consola F12"));
     }
 };
 
 const actualizar = async () => {
-  const res = await turnosServicios.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+    ...formUpdate.value,
+    zusuario: Z_ID
+  };
+  const res = await turnosServicios.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre: '', horario_referencia: ''};
     await cargar();
   }else{
-    alert("No se puede actualizar el registro");
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 

@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue';
 import { etapasServicios } from '@/services/etapas';
 
+const Z_ID = 'Victor';
+
 const etapas = ref([]);
 
 const form = ref({ 
@@ -21,31 +23,53 @@ const cargar = async () => {
 };
 
 const guardar = async () => {
-    const res = await etapasServicios.crear(form.value);
+    const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID
+    };
+    const res = await etapasServicios.crear(datosAEnviar);
     if (res.ok) {
         alert("Alta correcta");
         // Limpiamos el formulario para el siguiente registro
         form.value = {id: '',nombre: '', descripcion: ''};
         cargar();
     } else {
-        alert("Error: DNI o ID duplicado");
+       const errorData = await res.json();
+       console.error("FALLO CRÍTICO DE LA API:", errorData);
+       alert("Error: " + (errorData.error || "Revisa la consola F12"));
     }
 };
 
 const actualizar = async () => {
-  const res = await etapasServicios.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+    ...formUpdate.value,
+    zusuario: Z_ID
+  };
+  const res = await etapasServicios.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre: '', descripcion: ''};
     await cargar();
   }else{
-    alert("No se puede actualizar el registro");
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 
+const cursos = ref([]);
+//Solamente elimino la etapa en caso de que no haya ningún curso vinculado a ella
 const borrar = async (id) => {
     if (confirm("¿Desea eliminar la etapa?")) {
-        await etapasServicios.eliminar(id);
+        const res = await fetch('http://44.207.19.239:3000/cursos?zusuario=Victor') 
+        const existenCursos =  await res.json();
+        cursos.value = existenCursos.filter(c => c.etapa_id === id);
+        //Solo elimnamos la etapa seleccionado en caso de que no haya cursos vinculados
+        if(cursos.value.length === 0){
+          await etapasServicios.eliminar(id);
+        }else{
+          alert("No se puede borrar la etapa porque tiene un curso o más asignados");
+        }
         cargar();
     }
 };

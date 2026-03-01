@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { estadosUsuarioServicios } from '../services/estadosUsuario';
 
 const estadoUsuarios = ref([]);
+const Z_ID = 'Victor';
 
 const form = ref({ 
   id: '', 
@@ -23,6 +24,10 @@ const cargar = async () => {
 };
 
 const guardar = async () => {
+    const datosAEnviar = {
+      ...formUpdate.value,
+      zusuario: Z_ID
+    };
     const res = await estadosUsuarioServicios.crear(form.value);
     if (res.ok) {
         alert("Alta correcta");
@@ -30,23 +35,31 @@ const guardar = async () => {
         form.value = {id: '',nombre: '', permite_acceso: '', descripcion: ''};
         cargar();
     } else {
-        alert("Error: DNI o correo duplicado");
+        const errorData = await res.json();
+        console.error("FALLO CRÍTICO DE LA API:", errorData);
+        alert("Error: " + (errorData.error || "Revisa la consola F12"));
     }
 };
 
 const actualizar = async () => {
-  const res = await estadosUsuarioServicios.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+    ...formUpdate.value,
+    zusuario: Z_ID
+  };
+  const res = await estadosUsuarioServicios.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre: '', permite_acceso: '', descripcion: ''};
     await cargar();
   }else{
-    alert("No se puede actualizar el registro");
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 
 const borrar = async (id) => {
-    if (confirm("¿Desea cancelar las reservas activas de este profesor?")) {
+    if (confirm("¿Desea eliminar este estado de usuario?")) {
         await estadosUsuarioServicios.eliminar(id);
         cargar();
     }
@@ -57,9 +70,9 @@ onMounted(cargar);
 
 <template>
   <div class="modulo">
-    <h2>Gestión de departamentos (H3)</h2> 
+    <h2>Gestión de estados de usuario</h2> 
     <div class="contenido">
-        <h3>Dar de alta un departamento</h3>
+        <h3>Dar de alta un estado de usuario</h3>
         <form @submit.prevent="guardar">
             <input v-model="form.id" placeholder="ID" required><br><br>
             <input v-model="form.nombre" placeholder="Nombre" required><br><br>
@@ -92,7 +105,7 @@ onMounted(cargar);
         </table>
     </div>
     <div class="contenido">
-        <h3>Modificar un profesor</h3>
+        <h3>Modificar un estado de usuario</h3>
         <form @submit.prevent="actualizar">
             <input v-model="formUpdate.id" placeholder="ID" required><br><br>
             <input v-model="formUpdate.nombre" placeholder="Nombre" required><br><br>

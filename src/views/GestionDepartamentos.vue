@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { departamentosServicios } from '../services/departamentos';
 
 const departamentos = ref([]);
-
+const Z_ID = 'Victor';
 const form = ref({ 
   id: '', 
   nombre: '', 
@@ -23,30 +23,42 @@ const cargar = async () => {
 };
 
 const guardar = async () => {
-    const res = await departamentosServicios.crear(form.value);
+    const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID
+    };
+    const res = await departamentosServicios.crear(datosAEnviar);
     if (res.ok) {
         alert("Alta correcta");
         // Limpiamos el formulario para el siguiente registro
         form.value = {id: '',nombre: '', ubicacion: '', correo_contacto: ''};
         cargar();
     } else {
-        alert("Error: DNI o correo duplicado");
+        const errorData = await res.json();
+        console.error("FALLO CRÍTICO DE LA API:", errorData);
+        alert("Error: " + (errorData.error || "Revisa la consola F12"));
     }
 };
 
 const actualizar = async () => {
-  const res = await departamentosServicios.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+      ...formUpdate.value,
+      zusuario: Z_ID
+  };
+  const res = await departamentosServicios.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre: '', ubicacion: '', correo_contacto: ''};
     await cargar();
   }else{
-    alert("No se puede actualizar el registro");
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 
 const borrar = async (id) => {
-    if (confirm("¿Desea cancelar las reservas activas de este profesor?")) {
+    if (confirm("¿Desea eliminar este departamento?")) {
         await departamentosServicios.eliminar(id);
         cargar();
     }

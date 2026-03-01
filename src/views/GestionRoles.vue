@@ -2,45 +2,62 @@
 import { ref, onMounted } from 'vue';
 import { rolesServicios } from '../services/roles';
 
+//Guardamos los valores obtenidos del listar
 const roles = ref([]);
+//ZUSUARIO
+const Z_ID = 'Victor';
 
+//Formularios insert y update
 const form = ref({ 
   id: '', 
   nombre: '', 
   nivel_privilegio: '', 
-  descrpcion:''
+  descripcion:''
 });
 
 const formUpdate = ref({ 
   id: '', 
   nombre: '', 
   nivel_privilegio: '', 
-  descrpcion:''
+  descripcion:''
 });
 
+//MÉTODOS CRUD 
 const cargar = async () => { 
   roles.value = await rolesServicios.listar(); 
 };
 
 const guardar = async () => {
-    const res = await rolesServicios.crear(form.value);
+  const datosAEnviar = {
+      ...form.value,
+      zusuario: Z_ID
+    };
+    const res = await rolesServicios.crear(datosAEnviar);
     if (res.ok) {
         alert("Alta correcta");
         form.value = {id: '',nombre: '', nivel_privilegio: '', descripcion: ''};
         cargar();
     } else {
-        alert("Error: DNI o correo duplicado");
+        const errorData = await res.json();
+        console.error("FALLO CRÍTICO DE LA API:", errorData);
+        alert("Error: " + (errorData.error || "Revisa la consola F12"));
     }
 };
 
 const actualizar = async () => {
-  const res = await rolesServicios.actualizar(formUpdate.value.id, formUpdate.value);
+  const datosAEnviar = {
+      ...formUpdate.value,
+      zusuario: Z_ID
+    };
+  const res = await rolesServicios.actualizar(formUpdate.value.id, datosAEnviar);
   if(res.ok){
     alert("Datos actualizados con éxito!");
     formUpdate.value = {id: '',nombre: '', nivel_privilegio: '', descripcion: ''};
     await cargar();
   }else{
-    alert("No se puede actualizar el registro");
+    const errorData = await res.json();
+    console.error("FALLO CRÍTICO DE LA API:", errorData);
+    alert("Error: " + (errorData.error || "Revisa la consola F12"));
   }
 }
 
