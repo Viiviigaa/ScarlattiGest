@@ -1,43 +1,29 @@
-<<<<<<< HEAD
-# ProyectoCliente
+🚀 Despliegue y Configuración
+Para asegurar el correcto funcionamiento de la aplicación, sigue las instrucciones detalladas a continuación dependiendo del entorno que prefieras utilizar.
 
-This template should help get you started developing with Vue 3 in Vite.
+📋 Requisitos Previos
+XAMPP: Para el correcto funcionamiento del despliegue local, debe asegurarse de ejecutar el módulo Apache desde el panel de control de XAMPP.
 
-## Recommended IDE Setup
+📁 Estructura de Archivos del Servidor
+Si necesitas realizar ajustes manuales o entender la procedencia de los archivos de configuración:
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+Configuración: El archivo de configuración principal se encuentra en Servidor/Configuracion_web/default.conf.
 
-## Recommended Browser Setup
+Contenido Estático: Los archivos dentro de Servidor/HTML corresponden al contenido que debe alojarse en la carpeta dist (incluyendo la subcarpeta HTML y los assets).
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+🐳 Despliegue con Docker (NGINX)
+Si prefieres un entorno contenedorizado, puedes utilizar NGINX. A continuación, se detallan los comandos necesarios para gestionar el contenedor.
 
-## Customize configuration
+Generar e iniciar el contenedor
+Ejecuta el siguiente comando en tu terminal (PowerShell/Bash) desde la raíz del proyecto para mapear los archivos locales y la configuración personalizada:
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+Bash
+docker run --name mi-servidor-nginx `
+  -v "${PWD}/dist:/usr/share/nginx/html" `
+  -v "${PWD}/Servidor/Configuracion_web/default.conf:/etc/nginx/conf.d/default.conf" `
+  -p 8080:80 -d nginx
+Gestión del contenedor
+En caso de que necesites detener y eliminar el contenedor por completo para reiniciar el proceso:
 
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-=======
-# ScarlattiGest
-Gestion de administrador para cursos, roles, usuarios, turnos de un instituto
->>>>>>> 71f80feb0343e46b7b2d82247e6f140f09a1128d
+Bash
+docker rm -f mi-servidor-nginx
