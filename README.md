@@ -29,3 +29,23 @@ En caso de que necesites detener y eliminar el contenedor por completo para rein
 
 Bash
 docker rm -f mi-servidor-nginx
+
+---
+
+## 🤝 Contribución
+
+Sigue estos pasos:
+
+1. Haz un **Fork** del proyecto.
+2. Crea una rama para tu función (`git checkout -b feature/NuevaMejora`).
+3. Realiza tus cambios y haz un **Commit** (`git commit -m 'Añadir NuevaMejora'`).
+4. Haz **Push** a la rama (`git push origin feature/NuevaMejora`).
+5. Abre un **Pull Request**.
+
+---
+
+## 📄 Licencia
+
+Distribuido bajo la **Licencia MIT**. 
+
+> **Nota:** Esta licencia permite el uso comercial, la modificación y la distribución gratuita, siempre que se mantenga la atribución al autor original.
